@@ -1,71 +1,91 @@
 # 우왕좌왕 미로: 2인·4인 협동
 
-> 방향키를 나눠 맡고 하나의 캐릭터를 함께 움직이는 Unity 기반 온라인 협동 미로 게임입니다.
+**한 캐릭터를 여러 명이 조작할 때의 일관성**
 
-[Google Play에서 보기](https://play.google.com/store/apps/details?id=com.parkwonkuk.kungjakjak) · [아키텍처](docs/architecture.md) · [문제 해결 사례](docs/case-studies.md)
+무작위로 나눈 W·A·S·D 입력을 맞춰 별을 수집하고 목표 지점에 도달하는 온라인 협동 게임입니다.
+
+[Google Play에서 보기](https://play.google.com/store/apps/details?id=com.parkwonkuk.kungjakjak) · [코드 읽는 순서](docs/code-guide.md) · [문제 해결 과정](docs/case-studies.md) · [아키텍처](docs/architecture.md)
+
+![실제 2인 플레이 화면. 공유 캐릭터와 참가자별 담당 키 표시](assets/gameplay.png)
 
 ## 프로젝트 개요
 
-2인 플레이에서는 한 명당 두 방향, 4인 플레이에서는 한 명당 한 방향을 무작위로 배정받습니다. 각자 맡은 방향을 입력해 장애물을 피하고 별을 수집한 뒤 목표 지점에 도달합니다. 서로의 입력이 한 캐릭터에 합쳐지므로 타이밍과 의사소통이 핵심입니다.
-
-| 항목 | 내용 |
+| 구분 | 내용 |
 |---|---|
-| 게임명 | 우왕좌왕 미로: 2인·4인 협동 |
-| 개발 형태 | 1인 개발 — 기획, 클라이언트, 온라인 기능, UI, Android 배포 담당 |
-| 개발 기간 | 2026년 5월부터 개발 및 업데이트 진행 |
-| 플랫폼·출시 | Android · Google Play 출시 |
-| 엔진·언어 | Unity 6000.3.6f1 · C# · URP |
-| 네트워크 | Netcode for GameObjects 2.11.2 · Unity Transport 2.7.3 |
-| 온라인 서비스 | Unity Authentication · Lobby · Relay · Cloud Save · Leaderboards |
+| 개발 기간 | 2025.12 - 2026.10 (10개월) |
+| 개발 인원 | 1명 / 개인 프로젝트 |
+| 담당 업무 | 게임 기획, 클라이언트·온라인 기능, UI 구현, 개인 기록 저장, Android 빌드·배포 |
+| 출시 | Google Play 정식 출시 |
+| 엔진·언어 | Unity 6 / 6000.3.6f1, C#, 비동기 처리(async/await) |
+| 네트워크 | Netcode for GameObjects, UGS Lobby / Relay |
+| 온라인 서비스 | UGS Authentication, Cloud Save, Leaderboards, Google Play Games |
 
-이 저장소는 게임의 설계와 문제 해결 과정을 소개하는 공개 기술 포트폴리오입니다. 전체 게임 소스와 실행 파일은 포함하지 않습니다.
+2인 모드에서는 각자 두 방향, 4인 모드에서는 각자 한 방향을 나눠 맡습니다. 로컬 입력 반응과 호스트의 최종 판정을 분리하고, 확정 상태를 기준으로 클라이언트의 이동을 다시 계산했습니다.
 
-**문서 기준: 2026-10-22의 현재 개발 프로젝트.** 출시된 게임의 소개와 현재 코드의 기술 설명을 함께 제공합니다. Google Play 배포본과 개발 중인 업데이트의 기능은 다를 수 있습니다.
 
-## 핵심 게임플레이
+## 핵심 구현 시스템
 
-1. 2명 또는 4명이 온라인 방에 참가합니다.
-2. 이동 방향을 무작위로 나누어 맡습니다.
-3. 키보드 또는 모바일 터치로 하나의 캐릭터를 협동 조작합니다.
-4. 장애물과 위험 요소를 피하고 별을 수집해 목표 지점에 도달합니다.
-5. 맵·플레이 인원별 개인 기록과 팀 순위를 확인합니다.
+### 1. 호스트 권한형 공유 입력과 클라이언트 예측
 
-## 주요 구현
+- 참가자 ID·담당 키·명령 순서·Epoch를 검증해 잘못된 입력을 차단했습니다.
+- 로컬 입력을 먼저 예측하고, 호스트 확정 상태에서 미처리 입력만 다시 적용했습니다.
+- 호스트와 클라이언트가 같은 이동 규칙을 사용하도록 계산 로직을 분리했습니다.
+- [상세 설계와 구현 과정](docs/troubleshooting/01_input_prediction.md) · [호스트 코드](src/Movement/HostMoveAuthority.cs) · [예측 코드](src/Movement/ClientMovePredictor.cs)
 
-| 주제 | 현재 프로젝트의 구현 |
-|---|---|
-| 입력 검증 | 호스트가 참가자·배정 키·명령 순서·라운드 식별자·이동 가능 상태를 확인 |
-| 입력 예측 | 자신의 입력을 호스트 응답 전에 적용하고, 확정 상태에서 미처리 입력을 재계산 |
-| 제한적 되감기 | 짧게 늦은 입력을 이동 이력에 반영하되, 이미 발생한 별·위험 지형·골 판정 경계를 보호 |
-| 화면 보정 | 논리 위치와 표시 위치를 분리해 이동 결과와 화면 보정의 책임을 구분 |
-| 세션 관리 | 앱·세션·씬 수명 분리, 방 생성·참가 시 세션 생성, 종료 시 구독·주기 작업 정리 |
-| 이탈 처리 | 게임 중 누구든 이탈하면 세션 종료와 로비 복귀, 대기방에서는 참가자 이탈 시 호스트가 방 유지 |
-| 기록 저장 | Cloud Save 개인 기록과 Leaderboards 제출의 결과를 분리 |
-| 지연 진단 | 입력·로컬 적용·화면 반영·호스트 확정 시점과 RTT를 구분하고 로그 파일 저장 |
-| 모바일 서비스 | 익명 인증, AdMob 광고·UMP 동의, 사운드 설정과 개인정보처리방침 안내 |
+### 2. 인증·개인 기록·랭킹 제출의 단계별 실패 처리
 
-### 현재 업데이트 작업
+- 인증 → 프로필 저장 → 개인 기록 저장 → 랭킹 제출 순서를 명시했습니다.
+- 리더보드가 실패 Result를 반환해도 개인 기록 저장 결과는 유지했습니다.
+- Google Play Games 연동·해제 시 중복 요청과 타 계정 연결 오류를 구분했습니다.
+- [상세 처리 순서와 공개 범위](docs/troubleshooting/04_account_and_records.md) · [기록 저장 코드](src/Records/SubmitRunRecordUseCase.cs)
 
-Google Play Games 계정 연결·해제와 기존 계정 복구 흐름을 구현 중입니다. 익명 계정 연결 시 기존 Unity 플레이어 ID를 유지하고, 복구 로그인은 새 계정을 생성하지 않는 방식으로 구성했습니다. 이 항목은 배포 완료나 모든 실기기 시나리오 검증을 의미하지 않습니다.
+## 주요 트러블슈팅
 
-## 기술 구조
+### 1. 늦은 방향 입력을 보정하면서 확정 판정 보호
 
-```mermaid
-flowchart LR
-    INPUT["키보드 · 터치 입력"] --> COMMAND["이동 명령"]
-    COMMAND --> PREDICT["클라이언트 자기 입력 예측"]
-    COMMAND --> HOST["호스트 검증 · 이동 확정"]
-    HOST --> CONFIRMED["확정 상태 · 처리 번호"]
-    CONFIRMED --> PREDICT
-    PREDICT --> VIEW["논리 위치 · 표시 보정"]
-    HOST --> RUN["별 · 위험 지형 · 클리어 판정"]
-    RUN --> SAVE["개인 기록 저장"]
-    SAVE --> RANK["팀 순위 제출"]
+- 0.2초 이력 상한과 판정 경계 안에서 모든 참가자의 입력을 재계산했습니다.
+- 과거의 새 수집·도착·위험 접촉이 생기면 상태를 복원하고 현재 틱 적용으로 전환했습니다.
+- 별·골·위험 접촉과 배치 입력의 취소·복원을 4개 시나리오·45개 검사로 확인했습니다.
+- [문제·선택 근거·복원 과정·관측 결과](docs/troubleshooting/02_limited_recalculation.md) · [재계산 코드](src/Movement/HostMoveAuthority.cs)
+
+### 2. 이전 세션의 응답과 중복 종료 통지 처리
+
+- 앱·세션·씬의 책임을 나누고 자원 정리와 로비 이동의 순서를 명시했습니다.
+- 비동기 응답 후 요청 Scope와 현재 Scope를 비교해 이전 세션의 응답을 차단했습니다.
+- 외부 .NET 검사에서 세션 교체·중복 종료 등 대표 사례의 조건과 결과를 확인했습니다.
+- [종료 순서·이탈 정책·대표 검사 3개](docs/troubleshooting/03_session_lifecycle.md) · [세션 코드](src/Session/SessionLifetime.cs)
+
+## 코드 읽는 순서
+
+1. [SharedMovementRules.cs](src/Movement/SharedMovementRules.cs): 호스트와 클라이언트의 공통 이동 규칙
+2. [ClientMovePredictor.cs](src/Movement/ClientMovePredictor.cs): 명령 보관, 확정 상태 반영과 미처리 입력 재적용
+3. [HostMoveAuthority.cs](src/Movement/HostMoveAuthority.cs): 입력 검증, 틱별 이력 재생과 재계산 취소
+
+나머지 세션·기록 코드를 포함한 10개 제품 코드 파일의 역할과 생략된 의존성은 [코드 가이드](docs/code-guide.md)에 정리했습니다.
+
+## 저장소 구조
+
+```text
+src/
+├── Movement/                   # 공통 이동 규칙, 예측·확정과 핵심 자료형
+├── Session/                    # 세션 수명, 종료, 비동기 시작 요청
+└── Records/                    # 개인 기록과 랭킹 제출 순서
+docs/
+├── troubleshooting/
+│   ├── 01_input_prediction.md
+│   ├── 02_limited_recalculation.md
+│   ├── 03_session_lifecycle.md
+│   └── 04_account_and_records.md
+├── architecture.md             # 전체 책임·호출 흐름
+├── code-guide.md               # 공개 코드 읽는 순서
+└── case-studies.md             # 상세 사례 목차
+tests/ReplayCancellationCase.cs  # 재계산 취소·복원 검사
+assets/gameplay.png             # 실제 플레이 화면
+README.md
 ```
 
-- [아키텍처](docs/architecture.md): 책임 경계, 실제 호출 흐름과 수명 관리
-- [문제 해결 사례](docs/case-studies.md): 입력 예측·되감기, 이탈 정책, 저장 실패 처리와 진단
+## 공개 범위
 
-## 구현 확인 범위
+출시 게임의 핵심 구현을 검토할 수 있도록 개발 프로젝트에서 제품 C# 파일 10개와 취소 분기 검사 코드 1개를 선별했습니다. 일부 자료형·인터페이스, Unity 연결 코드와 계정 연동 어댑터, 서비스 설정은 생략했습니다. 독립 실행용 프로젝트는 포함하지 않습니다.
 
-기술 설명은 현재 코드의 정적 확인을 기준으로 작성했습니다. 입력 지연 감소율, 동시 접속 규모, 모든 기기에서의 안정성 등 측정하지 않은 수치는 제시하지 않습니다. 코드 수준 검사와 Unity Play Mode·Android 실기기·다인 접속 검증은 별도로 구분합니다.
+외부 .NET 로직 검사, 단일 호스트 로그 관측, Unity Play Mode·UGS 실통신·다중 기기 검증은 구분하며, 상세 문서에 각각의 조건과 확인 범위를 명시했습니다.
