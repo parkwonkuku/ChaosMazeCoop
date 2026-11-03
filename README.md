@@ -4,7 +4,7 @@
 
 무작위로 나눈 W·A·S·D 입력을 맞춰 별을 수집하고 목표 지점에 도달하는 온라인 협동 게임입니다.
 
-[Google Play에서 보기](https://play.google.com/store/apps/details?id=com.parkwonkuk.kungjakjak) · [코드 읽는 순서](docs/code-guide.md) · [문제 해결 과정](docs/case-studies.md) · [아키텍처](docs/architecture.md)
+[포트폴리오 PDF 보기](docs/portfolio.pdf) · [Google Play에서 보기](https://play.google.com/store/apps/details?id=com.parkwonkuk.kungjakjak) · [코드 읽는 순서](docs/code-guide.md) · [문제 해결 과정](docs/case-studies.md) · [아키텍처](docs/architecture.md)
 
 ![실제 2인 플레이 화면. 공유 캐릭터와 참가자별 담당 키 표시](assets/gameplay.png)
 
