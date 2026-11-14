@@ -39,7 +39,7 @@ await leaderboard.SubmitAsync(
 return saveResult;
 ```
 
-이 부분은 [SubmitRunRecordUseCase](../../src/Records/SubmitRunRecordUseCase.cs)의 실제 호출 순서를 보여줍니다. 리더보드의 실패 Result와 개인 기록 저장 결과를 분리하며, 예외나 취소까지 성공으로 바꾸는 처리는 아닙니다.
+이 부분은 [SubmitRunRecordUseCase](../../src/Records/SubmitRunRecordUseCase.cs)의 실제 호출 순서를 보여줍니다. 리더보드의 실패 Result와 개인 기록 저장 결과를 분리하며, 예외와 취소는 기존 전파 경로를 유지합니다.
 
 ## 계정 연동 기능의 공개 범위
 
